@@ -187,3 +187,5 @@ protected:
 
 	float m_flNextCollisionTime;
 };
+
+typedef CBaseParticle CBaseShadow;

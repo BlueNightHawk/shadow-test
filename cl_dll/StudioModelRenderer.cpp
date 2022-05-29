@@ -1,11 +1,6 @@
 // studio_model.cpp
 // routines for setting up to draw 3DStudio models
 
-
-#include "PlatformHeaders.h"
-#include <cmath>
-#include <cassert>
-
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
@@ -31,9 +26,6 @@
 #include "event_api.h"
 
 #include "particleman.h"
-#include "CBaseParticle.h"
-#include "CBaseShadow.h"
-
 
 extern cvar_t* tfc_newmodels;
 
@@ -1757,24 +1749,29 @@ StudioSpotShadow
 
 void CStudioModelRenderer::StudioSpotShadow()
 {
+	const model_s* pSprite = IEngineStudio.Mod_ForName("sprites/shadows.spr", 0);
+
+	if (!pSprite)
+		return;
+
+	// Dont draw shadows for client-side/temporary entites
 	if (m_pCurrentEntity->index == 0)
 		return;
 
 	static CBaseShadow *entShadow[MAX_EDICTS];
 
-	
+	// Use the player's info instead of viewmodel info for better results
 	if (m_pCurrentEntity == gEngfuncs.GetViewModel())
 	{
 		m_pCurrentEntity = gEngfuncs.GetLocalPlayer();
 	}
+
 	int idx = m_pCurrentEntity->index;
 	int shadowidx = idx - 1;
 
 	Vector vecSrc = m_pCurrentEntity->origin;
 	Vector vecEnd = m_pCurrentEntity->origin - Vector(0,0,8192);
 	pmtrace_s tr;
-
-	const model_s* pSprite = IEngineStudio.Mod_ForName("sprites/shadows.spr", 0);
 
 	// Store off the old count
 	gEngfuncs.pEventAPI->EV_PushPMStates();
@@ -1783,12 +1780,10 @@ void CStudioModelRenderer::StudioSpotShadow()
 	gEngfuncs.pEventAPI->EV_SetSolidPlayers(idx - 1);
 
 	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
+	// Trace to ground
 	gEngfuncs.pEventAPI->EV_PlayerTrace(vecSrc, vecEnd, PM_WORLD_ONLY | PM_GLASS_IGNORE, idx, &tr);
 
 	gEngfuncs.pEventAPI->EV_PopPMStates();
-
-	if (!pSprite)
-		return;
 
 	if (!entShadow[shadowidx])
 	{
@@ -1796,6 +1791,7 @@ void CStudioModelRenderer::StudioSpotShadow()
 	}
 	else
 	{
+		// clear entity if it existed before
 		if (entShadow[shadowidx]->m_flDieTime < gEngfuncs.GetClientTime())
 		{
 			entShadow[shadowidx] = nullptr;
@@ -1805,12 +1801,12 @@ void CStudioModelRenderer::StudioSpotShadow()
 	if (entShadow[shadowidx])
 	{
 		Vector angles;
+		VectorAngles(tr.plane.normal, (float*)&angles);
+		angles[0] *= -1;
 
 		CBaseShadow* cur = entShadow[shadowidx];
 
 		cur->m_vOrigin = tr.endpos + Vector(0,0,1);
-		VectorAngles(tr.plane.normal, (float *)&angles);
-		angles[0] *= -1;
 		cur->m_vAngles = angles;
 
 		cur->m_iRendermode = kRenderTransAlpha;
