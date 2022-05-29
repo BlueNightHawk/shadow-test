@@ -1,6 +1,11 @@
 // studio_model.cpp
 // routines for setting up to draw 3DStudio models
 
+
+#include "PlatformHeaders.h"
+#include <cmath>
+#include <cassert>
+
 #include "hud.h"
 #include "cl_util.h"
 #include "const.h"
@@ -20,6 +25,15 @@
 
 #include "StudioModelRenderer.h"
 #include "GameStudioModelRenderer.h"
+
+#include "pmtrace.h"
+#include "pm_defs.h"
+#include "event_api.h"
+
+#include "particleman.h"
+#include "CBaseParticle.h"
+#include "CBaseShadow.h"
+
 
 extern cvar_t* tfc_newmodels;
 
@@ -1729,5 +1743,81 @@ void CStudioModelRenderer::StudioRenderFinal()
 	else
 	{
 		StudioRenderFinal_Software();
+	}
+
+	StudioSpotShadow();
+}
+
+/*
+====================
+StudioSpotShadow
+
+====================
+*/
+
+void CStudioModelRenderer::StudioSpotShadow()
+{
+	if (m_pCurrentEntity->index == 0)
+		return;
+
+	static CBaseShadow *entShadow[MAX_EDICTS];
+
+	
+	if (m_pCurrentEntity == gEngfuncs.GetViewModel())
+	{
+		m_pCurrentEntity = gEngfuncs.GetLocalPlayer();
+	}
+	int idx = m_pCurrentEntity->index;
+	int shadowidx = idx - 1;
+
+	Vector vecSrc = m_pCurrentEntity->origin;
+	Vector vecEnd = m_pCurrentEntity->origin - Vector(0,0,8192);
+	pmtrace_s tr;
+
+	const model_s* pSprite = IEngineStudio.Mod_ForName("sprites/shadows.spr", 0);
+
+	// Store off the old count
+	gEngfuncs.pEventAPI->EV_PushPMStates();
+
+	// Now add in all of the players.
+	gEngfuncs.pEventAPI->EV_SetSolidPlayers(idx - 1);
+
+	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
+	gEngfuncs.pEventAPI->EV_PlayerTrace(vecSrc, vecEnd, PM_WORLD_ONLY | PM_GLASS_IGNORE, idx, &tr);
+
+	gEngfuncs.pEventAPI->EV_PopPMStates();
+
+	if (!pSprite)
+		return;
+
+	if (!entShadow[shadowidx])
+	{
+		entShadow[shadowidx] = (CBaseShadow*)g_pParticleMan->CreateParticle(tr.endpos, tr.plane.normal, (model_s *)pSprite, 50, 100, "shadow");
+	}
+	else
+	{
+		if (entShadow[shadowidx]->m_flDieTime < gEngfuncs.GetClientTime())
+		{
+			entShadow[shadowidx] = nullptr;
+			return;
+		}
+	}
+	if (entShadow[shadowidx])
+	{
+		Vector angles;
+
+		CBaseShadow* cur = entShadow[shadowidx];
+
+		cur->m_vOrigin = tr.endpos + Vector(0,0,1);
+		VectorAngles(tr.plane.normal, (float *)&angles);
+		angles[0] *= -1;
+		cur->m_vAngles = angles;
+
+		cur->m_iRendermode = kRenderTransAlpha;
+		cur->m_vColor = Vector(0, 0, 0);
+
+		cur->SetLightFlag(LIGHT_NONE);
+
+		cur->m_flDieTime = gEngfuncs.GetClientTime() + 0.1;
 	}
 }
