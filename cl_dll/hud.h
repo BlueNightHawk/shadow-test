@@ -615,3 +615,45 @@ extern int g_iTeamNumber;
 extern int g_iUser1;
 extern int g_iUser2;
 extern int g_iUser3;
+
+#define LIGHT_NONE (1 << 4)
+#define LIGHT_COLOR (1 << 5)
+#define LIGHT_INTENSITY (1 << 6)
+
+typedef struct cl_sprite_t
+{
+	void InitSprite(model_s *spr);
+	void Draw(void);
+
+	float m_flSize;			 // scale of object
+
+	float m_flStretchX;
+	float m_flStretchY;
+
+	float m_flBrightness; // transparency of object
+
+	int m_iFramerate;
+	int m_iNumFrames;
+	int m_iFrame;
+	int m_iRendermode;
+
+	int m_iRenderFlags;
+
+	Vector m_vOrigin; // object's position
+	Vector m_vAngles; // normal angles of object
+
+	Vector m_vLowLeft;
+	Vector m_vLowRight;
+	Vector m_vTopLeft;
+
+	Vector m_vColor;
+	float m_flMass;
+
+	model_s* m_pTexture;
+
+	void SetLightFlag(int iFlag)
+	{
+		m_iRenderFlags &= ~(LIGHT_NONE | LIGHT_INTENSITY | LIGHT_COLOR);
+		m_iRenderFlags |= iFlag;
+	}
+} cl_sprite_s;

@@ -1746,74 +1746,8 @@ StudioSpotShadow
 
 ====================
 */
-
+void SetEntQueueForShadow(cl_entity_s* ent);
 void CStudioModelRenderer::StudioSpotShadow()
 {
-	const model_s* pSprite = IEngineStudio.Mod_ForName("sprites/shadows.spr", 0);
-
-	if (!pSprite)
-		return;
-
-	// Dont draw shadows for client-side/temporary entites
-	if (m_pCurrentEntity->index == 0)
-		return;
-
-	static CBaseShadow *entShadow[MAX_EDICTS];
-
-	// Use the player's info instead of viewmodel info for better results
-	if (m_pCurrentEntity == gEngfuncs.GetViewModel())
-	{
-		m_pCurrentEntity = gEngfuncs.GetLocalPlayer();
-	}
-
-	int idx = m_pCurrentEntity->index;
-	int shadowidx = idx - 1;
-
-	Vector vecSrc = m_pCurrentEntity->origin;
-	Vector vecEnd = m_pCurrentEntity->origin - Vector(0,0,8192);
-	pmtrace_s tr;
-
-	// Store off the old count
-	gEngfuncs.pEventAPI->EV_PushPMStates();
-
-	// Now add in all of the players.
-	gEngfuncs.pEventAPI->EV_SetSolidPlayers(idx - 1);
-
-	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
-	// Trace to ground
-	gEngfuncs.pEventAPI->EV_PlayerTrace(vecSrc, vecEnd, PM_WORLD_ONLY | PM_GLASS_IGNORE, idx, &tr);
-
-	gEngfuncs.pEventAPI->EV_PopPMStates();
-
-	if (!entShadow[shadowidx])
-	{
-		entShadow[shadowidx] = (CBaseShadow*)g_pParticleMan->CreateParticle(tr.endpos, tr.plane.normal, (model_s *)pSprite, 50, 100, "shadow");
-	}
-	else
-	{
-		// clear entity if it existed before
-		if (entShadow[shadowidx]->m_flDieTime < gEngfuncs.GetClientTime())
-		{
-			entShadow[shadowidx] = nullptr;
-			return;
-		}
-	}
-	if (entShadow[shadowidx])
-	{
-		Vector angles;
-		VectorAngles(tr.plane.normal, (float*)&angles);
-		angles[0] *= -1;
-
-		CBaseShadow* cur = entShadow[shadowidx];
-
-		cur->m_vOrigin = tr.endpos + Vector(0,0,1);
-		cur->m_vAngles = angles;
-
-		cur->m_iRendermode = kRenderTransAlpha;
-		cur->m_vColor = Vector(0, 0, 0);
-
-		cur->SetLightFlag(LIGHT_NONE);
-
-		cur->m_flDieTime = gEngfuncs.GetClientTime() + 0.1;
-	}
+	SetEntQueueForShadow(m_pCurrentEntity);
 }
